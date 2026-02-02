@@ -70,7 +70,7 @@ sd_mmc_card:
 ```yaml
 sensor:
   - platform: sd_mmc_card
-    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    sd_mmc_card_id: esp_sd_card
     type: total_space
     name: "SD Total Space"
     unit_of_measurement: "MB"
@@ -79,7 +79,7 @@ sensor:
       - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
-    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    sd_mmc_card_id: esp_sd_card
     type: used_space
     name: "SD Used Space"
     unit_of_measurement: "MB"
@@ -88,7 +88,7 @@ sensor:
       - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
-    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    sd_mmc_card_id: esp_sd_card
     type: free_space
     name: "SD Free Space"
     unit_of_measurement: "MB"
@@ -97,14 +97,14 @@ sensor:
       - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
-    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    sd_mmc_card_id: esp_sd_card
     type: frequency
     name: "SD Frequency"
     unit_of_measurement: "kHz"
     accuracy_decimals: 0
 
   - platform: sd_mmc_card
-    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    sd_mmc_card_id: esp_sd_card
     type: file_size
     path: "/test.txt"
     name: "Test.txt Size"
@@ -123,12 +123,12 @@ sensor:
 ```yaml
 text_sensor:
   - platform: sd_mmc_card
-    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    sd_mmc_card_id: esp_sd_card
     type: sd_card_type
     name: "SD Card Type"
 
   - platform: sd_mmc_card
-    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    sd_mmc_card_id: esp_sd_card
     type: file_content
     name: "SD File Content"
 ```
@@ -156,7 +156,7 @@ id(esp_sd_card).file_size("/test.txt");
 - **append_file**: Append data to an existing file.
 - **read_file**: Read file contents into a string.
 - **delete_file**: Remove a file from the card.
-- **format_card**: Format the card (automatic remount afterward).
+- **format_card**: Format the card (remount required afterward).
 - **create_directory/remove_directory**: Manage directories.
 - **list_directory/list_directory_file_info**: Enumerate directory entries.
 - **file_size**: Returns the size of a file in bytes.
@@ -170,7 +170,7 @@ button:
       then:
         - lambda: |-
             if (id(esp_sd_card).format_card()) {
-              ESP_LOGW("sd_card", "Format complete; remounted");
+              ESP_LOGW("sd_card", "Format complete; remount required");
             } else {
               ESP_LOGE("sd_card", "Format failed");
             }
@@ -182,6 +182,6 @@ buttons and sensors.
 
 ## Notes
 - Paths are relative to the SD mount, so use `/` prefixes (e.g., `/test.txt`).
-- `sd_mmc_card_id` can be omitted when you only have one SD/MMC component.
-  If you add multiple cards, set `sd_mmc_card_id` explicitly.
+- `sd_mmc_card_id` is required for sensors and text sensors to reference the
+  component instance (ESPHome cannot infer the component ID automatically).
 - `frequency` is reported in kHz.
