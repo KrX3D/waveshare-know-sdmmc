@@ -97,11 +97,6 @@ text_sensor:
     name: "SD File Content"
     id: sd_file_content_sensor
 
-  - platform: sd_mmc_card
-    type: fs_type
-    name: "SD Filesystem"
-    id: sd_filesystem_sensor
-
 # Buttons
 button:
   - platform: template
