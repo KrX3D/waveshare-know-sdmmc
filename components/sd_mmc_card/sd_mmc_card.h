@@ -28,6 +28,9 @@ struct FileInfo {
 
 class SdMmcCard : public Component {
  public:
+  SdMmcCard();
+  static SdMmcCard *get_default() { return default_instance_; }
+
   void setup() override;
   void dump_config() override;
   void loop() override;
@@ -47,6 +50,8 @@ class SdMmcCard : public Component {
   bool append_file(const std::string &path, const std::string &data);
   bool read_file(const std::string &path, std::string &out);
   bool delete_file(const std::string &path);
+  bool format_card();
+  bool remount_card();
 
   bool create_directory(const std::string &path);
   bool remove_directory(const std::string &path);
@@ -68,6 +73,7 @@ class SdMmcCard : public Component {
   void register_total_space_sensor(sensor::Sensor *s) { total_space_sensor_ = s; }
   void register_used_space_sensor(sensor::Sensor *s) { used_space_sensor_ = s; }
   void register_free_space_sensor(sensor::Sensor *s) { free_space_sensor_ = s; }
+  void register_frequency_sensor(sensor::Sensor *s) { frequency_sensor_ = s; }
   void register_file_size_sensor(sensor::Sensor *s, const std::string &path) {
     file_size_sensor_ = s;
     file_size_path_ = path;
@@ -78,6 +84,10 @@ class SdMmcCard : public Component {
   void register_file_content_text_sensor(text_sensor::TextSensor *ts) { file_content_sensor_ = ts; }
 
  protected:
+  bool mount_card_();
+  bool unmount_card_();
+  void update_card_info_();
+
   void scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out);
   void update_sensors_();
   std::string card_type_string_();
@@ -93,12 +103,15 @@ class SdMmcCard : public Component {
   sensor::Sensor *total_space_sensor_{nullptr};
   sensor::Sensor *used_space_sensor_{nullptr};
   sensor::Sensor *free_space_sensor_{nullptr};
+  sensor::Sensor *frequency_sensor_{nullptr};
   sensor::Sensor *file_size_sensor_{nullptr};
   std::string file_size_path_;
 
   // text sensors
   text_sensor::TextSensor *card_type_sensor_{nullptr};
   text_sensor::TextSensor *file_content_sensor_{nullptr};
+
+  static SdMmcCard *default_instance_;
 };
 
 }  // namespace sd_mmc_card
