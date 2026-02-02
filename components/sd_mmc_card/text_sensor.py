@@ -16,12 +16,12 @@ CONFIG_SCHEMA = cv.All(
 )
 
 async def to_code(config):
-    sd = await cg.get_variable(config[cv.GenerateID()])  # get SD card instance
-    ts = text_sensor.new_text_sensor(config[CONF_NAME])   # create text sensor object
+    sd = await cg.get_variable(config[cv.GenerateID()])  # SD card instance
+    ts = text_sensor.new_text_sensor(config[CONF_NAME])
 
     if config[CONF_TYPE] == "sd_card_type":
-        cg.add(sd.register_card_type_text_sensor(ts))   # attach to SD card
+        cg.add(sd.register_card_type_text_sensor(ts))
     elif config[CONF_TYPE] == "file_content":
-        cg.add(sd.register_file_content_text_sensor(ts))  # attach to SD card
+        cg.add(sd.register_file_content_text_sensor(ts))
 
     return ts
