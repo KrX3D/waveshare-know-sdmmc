@@ -192,6 +192,19 @@ bool SdMmcCard::delete_file(const std::string &path) {
   return removed;
 }
 
+bool SdMmcCard::format_card() {
+  MKFS_PARM opt{};
+  opt.fmt = FM_ANY;
+  uint8_t work[4096];
+  FRESULT result = f_mkfs(FATFS_ROOT, &opt, work, sizeof(work));
+  if (result == FR_OK) {
+    ESP_LOGW(TAG, "Formatted card at %s; remount required", FATFS_ROOT);
+    return true;
+  }
+  ESP_LOGE(TAG, "Failed to format card at %s (fatfs err: %d)", FATFS_ROOT, result);
+  return false;
+}
+
 /* ---------- dirs ---------- */
 
 bool SdMmcCard::create_directory(const std::string &path) {

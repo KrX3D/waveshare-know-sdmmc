@@ -12,6 +12,18 @@ capacity helpers to automations, along with sensors and text sensors.
 - Text sensors: card type, file content.
 
 ## Installation
+### Option A: external_components (recommended)
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/KrX3D/waveshare-know-sdmmc
+      ref: main
+    refresh: 0s
+    components: [sd_mmc_card]
+```
+
+### Option B: custom_components
 Copy the `components/sd_mmc_card` folder into your ESPHome project’s
 `custom_components/` directory.
 
@@ -111,6 +123,7 @@ id(esp_sd_card).remove_directory("/testdir");
 id(esp_sd_card).list_directory("/", 2);
 id(esp_sd_card).list_directory_file_info("/", 2);
 id(esp_sd_card).file_size("/test.txt");
+id(esp_sd_card).format_card();
 ```
 
 ## Full Example
@@ -119,4 +132,6 @@ buttons and sensors.
 
 ## Notes
 - Paths are relative to the SD mount, so use `/` prefixes (e.g., `/test.txt`).
+- `sd_mmc_card_id` is required for sensors and text sensors to reference the
+  component instance.
 - `frequency` is reported in kHz.

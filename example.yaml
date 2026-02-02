@@ -1,6 +1,14 @@
 esphome:
   name: smartknob
   
+external_components:
+  - source:
+      type: git
+      url: https://github.com/KrX3D/waveshare-know-sdmmc
+      ref: main
+    refresh: 0s
+    components: [sd_mmc_card]
+
 esp32:
   board: esp32-s3-devkitc-1
   flash_size: 16MB
@@ -196,4 +204,15 @@ button:
               ESP_LOGI("sd_card", "File deleted");
             } else {
               ESP_LOGE("sd_card", "Failed to delete file");
+            }
+
+  - platform: template
+    name: "SD Format Card"
+    on_press:
+      then:
+        - lambda: |-
+            if (id(esp_sd_card).format_card()) {
+              ESP_LOGW("sd_card", "Format complete; remount required");
+            } else {
+              ESP_LOGE("sd_card", "Format failed");
             }

@@ -47,6 +47,7 @@ class SdMmcCard : public Component {
   bool append_file(const std::string &path, const std::string &data);
   bool read_file(const std::string &path, std::string &out);
   bool delete_file(const std::string &path);
+  bool format_card();
 
   bool create_directory(const std::string &path);
   bool remove_directory(const std::string &path);
