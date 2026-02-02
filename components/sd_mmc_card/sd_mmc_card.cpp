@@ -100,6 +100,9 @@ void SdMmcCard::update_sensors_() {
   
   if (free_space_sensor_)
     free_space_sensor_->publish_state(free_space());
+
+  if (frequency_sensor_)
+    frequency_sensor_->publish_state(card_freq_khz_);
   
   if (file_size_sensor_ && !file_size_path_.empty())
     file_size_sensor_->publish_state(file_size(file_size_path_));
@@ -158,7 +161,7 @@ bool SdMmcCard::read_file(const std::string &path, std::string &out) {
 }
 
 bool SdMmcCard::delete_file(const std::string &path) {
-  bool result = unlink((std::string(MOUNT_POINT) + path).c_str()) == 0;
+  bool result = f_unlink(fatfs_path_(path).c_str()) == FR_OK;
   
   // Update file size sensor if monitoring this file
   if (result && file_size_sensor_ && file_size_path_ == path)
