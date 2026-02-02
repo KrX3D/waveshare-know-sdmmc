@@ -5,8 +5,6 @@ from esphome.const import (
     CONF_ID,
     CONF_TYPE,
     STATE_CLASS_MEASUREMENT,
-    DEVICE_CLASS_DATA_SIZE,
-    UNIT_BYTE,
 )
 from . import SdMmcCard, sd_ns
 
@@ -21,9 +19,7 @@ SENSOR_TYPES = {
 }
 
 CONFIG_SCHEMA = sensor.sensor_schema(
-    unit_of_measurement=UNIT_BYTE,
     accuracy_decimals=0,
-    device_class=DEVICE_CLASS_DATA_SIZE,
     state_class=STATE_CLASS_MEASUREMENT,
 ).extend({
     cv.GenerateID(CONF_SD_MMC_CARD_ID): cv.use_id(SdMmcCard),
