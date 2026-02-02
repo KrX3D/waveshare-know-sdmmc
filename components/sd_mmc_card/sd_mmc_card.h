@@ -6,6 +6,9 @@
 #include <vector>
 #include <string>
 
+// Forward declaration
+struct sdmmc_card_t;
+
 namespace esphome {
 namespace sd_mmc_card {
 
@@ -83,6 +86,8 @@ class SdMmcCard : public Component {
   bool mode_1bit_{false};
 
   CardType card_type_{CardType::UNKNOWN};
+  sdmmc_card_t *card_{nullptr};
+  uint32_t card_freq_khz_{0};
 
   // sensors
   sensor::Sensor *total_space_sensor_{nullptr};

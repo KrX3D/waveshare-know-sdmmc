@@ -9,6 +9,7 @@
 #include "ff.h"
 #include <sys/stat.h>
 #include <dirent.h>
+#include <errno.h>
 
 namespace esphome {
 namespace sd_mmc_card {
@@ -32,9 +33,8 @@ void SdMmcCard::setup() {
   mount_cfg.format_if_mount_failed = false;
   mount_cfg.max_files = 5;
 
-  sdmmc_card_t *card;
   esp_err_t err = esp_vfs_fat_sdmmc_mount(
-      MOUNT_POINT, &host, &slot, &mount_cfg, &card);
+      MOUNT_POINT, &host, &slot, &mount_cfg, &card_);
 
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Mount failed: %s", esp_err_to_name(err));
@@ -42,13 +42,17 @@ void SdMmcCard::setup() {
     return;
   }
 
-  switch (card->ocr & SD_OCR_SDHC_CAP) {
-    case 0: card_type_ = CardType::SDSC; break;
-    default: card_type_ = CardType::SDHC; break;
+  // Store card info
+  if (card_) {
+    switch (card_->ocr & SD_OCR_SDHC_CAP) {
+      case 0: card_type_ = CardType::SDSC; break;
+      default: card_type_ = CardType::SDHC; break;
+    }
+    card_freq_khz_ = card_->max_freq_khz;
   }
 
-  ESP_LOGI(TAG, "Mounted at %s (%s-bit)",
-           MOUNT_POINT, mode_1bit_ ? "1" : "4");
+  ESP_LOGI(TAG, "Mounted at %s (%s-bit, %d kHz)",
+           MOUNT_POINT, mode_1bit_ ? "1" : "4", card_freq_khz_);
   
   // Publish initial sensor values
   update_sensors_();
@@ -59,6 +63,7 @@ void SdMmcCard::dump_config() {
   ESP_LOGCONFIG(TAG, "  Mount: %s", MOUNT_POINT);
   ESP_LOGCONFIG(TAG, "  Mode: %s-bit", mode_1bit_ ? "1" : "4");
   ESP_LOGCONFIG(TAG, "  Card Type: %s", card_type_string_().c_str());
+  ESP_LOGCONFIG(TAG, "  Frequency: %d kHz", card_freq_khz_);
 }
 
 void SdMmcCard::loop() {
@@ -194,15 +199,22 @@ void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<Fi
   if (depth == 0) return;
   
   std::string full_path = std::string(MOUNT_POINT) + path;
+  ESP_LOGD(TAG, "Scanning directory: %s", full_path.c_str());
+  
   DIR *dir = opendir(full_path.c_str());
-  if (!dir) return;
+  if (!dir) {
+    ESP_LOGE(TAG, "Failed to open directory: %s (errno: %d)", full_path.c_str(), errno);
+    return;
+  }
   
   struct dirent *entry;
+  int count = 0;
   while ((entry = readdir(dir)) != nullptr) {
     // Skip . and ..
     if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
       continue;
     
+    count++;
     std::string entry_path = path;
     if (!entry_path.empty() && entry_path.back() != '/')
       entry_path += "/";
@@ -213,12 +225,14 @@ void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<Fi
     if (stat(full_entry.c_str(), &st) == 0) {
       bool is_dir = S_ISDIR(st.st_mode);
       out.push_back(FileInfo{entry_path, (size_t)st.st_size, is_dir});
+      ESP_LOGD(TAG, "  Found: %s (%s, %d bytes)", entry->d_name, is_dir ? "DIR" : "FILE", (int)st.st_size);
       
       if (is_dir && depth > 1) {
         scan_dir_(entry_path, depth - 1, out);
       }
     }
   }
+  ESP_LOGD(TAG, "Total entries found in %s: %d", path.c_str(), count);
   closedir(dir);
 }
 

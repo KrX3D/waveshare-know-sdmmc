@@ -1,13 +1,20 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
-from esphome import pins
+from esphome import pins, automation
 
 DEPENDENCIES = ["esp32"]
 AUTO_LOAD = ["sensor", "text_sensor"]
 
 sd_ns = cg.esphome_ns.namespace("sd_mmc_card")
 SdMmcCard = sd_ns.class_("SdMmcCard", cg.Component)
+
+# Actions
+WriteFileAction = sd_ns.class_("WriteFileAction", automation.Action)
+AppendFileAction = sd_ns.class_("AppendFileAction", automation.Action)
+DeleteFileAction = sd_ns.class_("DeleteFileAction", automation.Action)
+CreateDirectoryAction = sd_ns.class_("CreateDirectoryAction", automation.Action)
+RemoveDirectoryAction = sd_ns.class_("RemoveDirectoryAction", automation.Action)
 
 CONF_CLK_PIN = "clk_pin"
 CONF_CMD_PIN = "cmd_pin"
