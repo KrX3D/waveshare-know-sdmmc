@@ -121,17 +121,6 @@ void SdMmcCard::dump_config() {
   ESP_LOGCONFIG(TAG, "  Mode: %s-bit", mode_1bit_ ? "1" : "4");
   ESP_LOGCONFIG(TAG, "  Card Type: %s", card_type_string_().c_str());
   ESP_LOGCONFIG(TAG, "  Frequency: %d kHz", card_freq_khz_);
-  ESP_LOGCONFIG(TAG, "  Filesystem: %s", fs_type_string_().c_str());
-  ESP_LOGCONFIG(TAG, "  Sensors: total=%s used=%s free=%s freq=%s file_size=%s",
-                total_space_sensor_ ? "on" : "off",
-                used_space_sensor_ ? "on" : "off",
-                free_space_sensor_ ? "on" : "off",
-                frequency_sensor_ ? "on" : "off",
-                file_size_sensor_ ? "on" : "off");
-  ESP_LOGCONFIG(TAG, "  Text Sensors: card_type=%s file_content=%s fs_type=%s",
-                card_type_sensor_ ? "on" : "off",
-                file_content_sensor_ ? "on" : "off",
-                fs_type_sensor_ ? "on" : "off");
 }
 
 void SdMmcCard::loop() {
