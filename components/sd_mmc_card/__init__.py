@@ -1,32 +1,52 @@
-#pragma once
-#include "esphome/core/component.h"
+import esphome.codegen as cg
+import esphome.config_validation as cv
+from esphome import pins
+from esphome.const import CONF_ID
 
-namespace esphome {
-namespace sd_mmc_card {
+DEPENDENCIES = ["esp32"]
 
-class SdMmc : public Component {
- public:
-  void set_clk_pin(int pin) { clk_pin_ = pin; }
-  void set_cmd_pin(int pin) { cmd_pin_ = pin; }
-  void set_data0_pin(int pin) { data0_pin_ = pin; }
-  void set_data1_pin(int pin) { data1_pin_ = pin; }
-  void set_data2_pin(int pin) { data2_pin_ = pin; }
-  void set_data3_pin(int pin) { data3_pin_ = pin; }
-  void set_mode_1bit(bool v) { mode_1bit_ = v; }
-  void set_power_ctrl_pin(GPIOPin *pin) { power_ctrl_pin_ = pin; }
+sd_ns = cg.esphome_ns.namespace("sd_mmc_card")
+SdMmcCard = sd_ns.class_("SdMmcCard", cg.Component)
 
-  void setup() override;
+CONF_CLK_PIN = "clk_pin"
+CONF_CMD_PIN = "cmd_pin"
+CONF_DATA0_PIN = "data0_pin"
+CONF_DATA1_PIN = "data1_pin"
+CONF_DATA2_PIN = "data2_pin"
+CONF_DATA3_PIN = "data3_pin"
+CONF_MODE_1BIT = "mode_1bit"
+CONF_MOUNT_POINT = "mount_point"
 
- protected:
-  int clk_pin_;
-  int cmd_pin_;
-  int data0_pin_;
-  int data1_pin_;
-  int data2_pin_;
-  int data3_pin_;
-  bool mode_1bit_{false};
-  GPIOPin *power_ctrl_pin_{nullptr};
-};
+CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.declare_id(SdMmcCard),
+        cv.Required(CONF_CLK_PIN): pins.internal_gpio_output_pin_number,
+        cv.Required(CONF_CMD_PIN): pins.internal_gpio_output_pin_number,
+        cv.Required(CONF_DATA0_PIN): pins.internal_gpio_pin_number,
+        cv.Optional(CONF_DATA1_PIN): pins.internal_gpio_pin_number,
+        cv.Optional(CONF_DATA2_PIN): pins.internal_gpio_pin_number,
+        cv.Optional(CONF_DATA3_PIN): pins.internal_gpio_pin_number,
+        cv.Optional(CONF_MODE_1BIT, default=False): cv.boolean,
+        cv.Optional(CONF_MOUNT_POINT, default="/sdcard"): cv.string,
+    }
+).extend(cv.COMPONENT_SCHEMA)
 
-}  // namespace sd_mmc_card
-}  // namespace esphome
+
+async def to_code(config):
+    var = cg.new_Pvariable(config[CONF_ID])
+    await cg.register_component(var, config)
+
+    cg.add(var.set_clk_pin(config[CONF_CLK_PIN]))
+    cg.add(var.set_cmd_pin(config[CONF_CMD_PIN]))
+    cg.add(var.set_data0_pin(config[CONF_DATA0_PIN]))
+    cg.add(var.set_mode_1bit(config[CONF_MODE_1BIT]))
+    cg.add(var.set_mount_point(config[CONF_MOUNT_POINT]))
+
+    if not config[CONF_MODE_1BIT]:
+        cg.add(var.set_data1_pin(config[CONF_DATA1_PIN]))
+        cg.add(var.set_data2_pin(config[CONF_DATA2_PIN]))
+        cg.add(var.set_data3_pin(config[CONF_DATA3_PIN]))
+
+    # ESP-IDF libraries
+    cg.add_library("fatfs", None)
+    cg.add_library("sdmmc", None)
