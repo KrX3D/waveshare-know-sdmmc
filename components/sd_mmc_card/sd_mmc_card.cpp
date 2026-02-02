@@ -1,5 +1,6 @@
 #include "sd_mmc_card.h"
 #include "esphome/core/log.h"
+#include "esphome/core/hal.h"
 
 #include "driver/sdmmc_host.h"
 #include "driver/sdmmc_defs.h"
@@ -63,7 +64,7 @@ void SdMmcCard::dump_config() {
 void SdMmcCard::loop() {
   // Update sensors periodically
   static uint32_t last_update = 0;
-  uint32_t now = esphome::millis();
+  uint32_t now = millis();
   if (now - last_update > 60000) {  // Update every 60 seconds
     update_sensors_();
     last_update = now;
