@@ -131,11 +131,17 @@ text_sensor:
     # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
     type: file_content
     name: "SD File Content"
+
+  - platform: sd_mmc_card
+    # sd_mmc_card_id: esp_sd_card  # optional if you only have one instance
+    type: fs_type
+    name: "SD Filesystem"
 ```
 
 #### Text sensor reference
 - **sd_card_type**: Card type (MMC/SDSC/SDHC/SDXC/UNKNOWN).
 - **file_content**: String contents of the last read file when you publish it.
+- **fs_type**: Filesystem type (FAT12/FAT16/FAT32/exFAT/UNKNOWN).
 
 ### Methods you can call from lambdas
 ```cpp
@@ -176,6 +182,14 @@ button:
             }
 ```
 
+#### Filesystem type text sensor example
+```yaml
+text_sensor:
+  - platform: sd_mmc_card
+    type: fs_type
+    name: "SD Filesystem"
+```
+
 ## Full Example
 See [example.yaml](example.yaml) for a complete working configuration including
 buttons and sensors.
@@ -185,3 +199,5 @@ buttons and sensors.
 - `sd_mmc_card_id` can be omitted when you only have one SD/MMC component.
   If you add multiple cards, set `sd_mmc_card_id` explicitly.
 - `frequency` is reported in kHz.
+- Formatting remounts the card and refreshes sensors, so space metrics update
+  after format.
