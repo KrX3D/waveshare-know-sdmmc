@@ -17,14 +17,30 @@ static const char *TAG = "sd_mmc_card";
 static const char *MOUNT_POINT = "/sdcard";
 static const char *FATFS_ROOT = "0:";
 
+static constexpr char kFatfsSeparator = '/';
+
+using FatfsDir =
+#if defined(FF_DIR)
+    FF_DIR;
+#else
+    DIR;
+#endif
+
+using FatfsFileInfo =
+#if defined(FF_FILINFO)
+    FF_FILINFO;
+#else
+    FILINFO;
+#endif
+
 static std::string fatfs_path_(const std::string &path) {
   if (path.empty()) {
-    return std::string(FATFS_ROOT) + "/";
+    return std::string(FATFS_ROOT) + kFatfsSeparator;
   }
   if (path.front() == '/') {
     return std::string(FATFS_ROOT) + path;
   }
-  return std::string(FATFS_ROOT) + "/" + path;
+  return std::string(FATFS_ROOT) + kFatfsSeparator + path;
 }
 
 void SdMmcCard::setup() {
@@ -174,14 +190,14 @@ bool SdMmcCard::remove_directory(const std::string &path) {
 }
 
 bool SdMmcCard::is_directory(const std::string &path) {
-  FILINFO info{};
+  FatfsFileInfo info{};
   if (f_stat(fatfs_path_(path).c_str(), &info) != FR_OK)
     return false;
   return (info.fattrib & AM_DIR) != 0;
 }
 
 size_t SdMmcCard::file_size(const std::string &path) {
-  FILINFO info{};
+  FatfsFileInfo info{};
   if (f_stat(fatfs_path_(path).c_str(), &info) != FR_OK)
     return 0;
   return info.fsize;
@@ -206,20 +222,20 @@ std::vector<FileInfo> SdMmcCard::list_directory_file_info(const std::string &pat
   return result;
 }
 
-void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out) {
-  if (depth == 0) return;
-  
+void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out) {␊
+  if (depth == 0) return;␊
+  ␊
   std::string full_path = fatfs_path_(path);
-  ESP_LOGD(TAG, "Scanning directory: %s", full_path.c_str());
+  ESP_LOGD(TAG, "Scanning directory: %s", full_path.c_str());␊
 
-  DIR dir{};
+  FatfsDir dir{};
   FRESULT result = f_opendir(&dir, full_path.c_str());
   if (result != FR_OK) {
     ESP_LOGE(TAG, "Failed to open directory: %s (fatfs err: %d)", full_path.c_str(), result);
     return;
   }
 
-  FILINFO file_info{};
+  FatfsFileInfo file_info{};
   int count = 0;
   while (true) {
     result = f_readdir(&dir, &file_info);
@@ -230,8 +246,8 @@ void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<Fi
     
     count++;
     std::string entry_path = path;
-    if (!entry_path.empty() && entry_path.back() != '/')
-      entry_path += "/";
+    if (!entry_path.empty() && entry_path.back() != kFatfsSeparator)
+      entry_path += kFatfsSeparator;
     entry_path += file_info.fname;
 
     bool is_dir = (file_info.fattrib & AM_DIR) != 0;
@@ -241,9 +257,9 @@ void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<Fi
 
     if (is_dir && depth > 1) {
       scan_dir_(entry_path, depth - 1, out);
-    }
-  }
-  ESP_LOGD(TAG, "Total entries found in %s: %d", path.c_str(), count);
+    }␊
+  }␊
+  ESP_LOGD(TAG, "Total entries found in %s: %d", path.c_str(), count);␊
   f_closedir(&dir);
 }
 
