@@ -44,6 +44,7 @@ sd_mmc_card:
 # Sensors (as separate platform entries)
 sensor:
   - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
     type: total_space
     name: "SD Total Space"
     id: sd_total_space
@@ -53,6 +54,7 @@ sensor:
       - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
     type: used_space
     name: "SD Used Space"
     id: sd_used_space
@@ -62,6 +64,7 @@ sensor:
       - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
     type: free_space
     name: "SD Free Space"
     id: sd_free_space
@@ -71,6 +74,7 @@ sensor:
       - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
     type: frequency
     name: "SD Frequency"
     id: sd_frequency
@@ -78,6 +82,7 @@ sensor:
     accuracy_decimals: 0
 
   - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
     type: file_size
     path: "/test.txt"
     name: "Test.txt Size"
@@ -88,11 +93,13 @@ sensor:
 # Text Sensors (as separate platform entries)
 text_sensor:
   - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
     type: sd_card_type
     name: "SD Card Type"
     id: sd_card_type_sensor
 
   - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
     type: file_content
     name: "SD File Content"
     id: sd_file_content_sensor
@@ -205,7 +212,7 @@ button:
       then:
         - lambda: |-
             if (id(esp_sd_card).format_card()) {
-              ESP_LOGW("sd_card", "Format complete; remounted");
+              ESP_LOGW("sd_card", "Format complete; remount required");
             } else {
               ESP_LOGE("sd_card", "Format failed");
             }

@@ -28,9 +28,6 @@ struct FileInfo {
 
 class SdMmcCard : public Component {
  public:
-  SdMmcCard();
-  static SdMmcCard *get_default() { return default_instance_; }
-
   void setup() override;
   void dump_config() override;
   void loop() override;
@@ -51,7 +48,6 @@ class SdMmcCard : public Component {
   bool read_file(const std::string &path, std::string &out);
   bool delete_file(const std::string &path);
   bool format_card();
-  bool remount_card();
 
   bool create_directory(const std::string &path);
   bool remove_directory(const std::string &path);
@@ -84,10 +80,6 @@ class SdMmcCard : public Component {
   void register_file_content_text_sensor(text_sensor::TextSensor *ts) { file_content_sensor_ = ts; }
 
  protected:
-  bool mount_card_();
-  bool unmount_card_();
-  void update_card_info_();
-
   void scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out);
   void update_sensors_();
   std::string card_type_string_();
@@ -110,8 +102,6 @@ class SdMmcCard : public Component {
   // text sensors
   text_sensor::TextSensor *card_type_sensor_{nullptr};
   text_sensor::TextSensor *file_content_sensor_{nullptr};
-
-  static SdMmcCard *default_instance_;
 };
 
 }  // namespace sd_mmc_card
