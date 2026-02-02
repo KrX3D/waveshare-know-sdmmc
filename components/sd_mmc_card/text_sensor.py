@@ -28,24 +28,20 @@ async def to_code(config):
     parent_expr = "sd_mmc_card::SdMmcCard::get_default()"
 
     def add_default(expression):
-        cg.add(
-            cg.RawExpression(
-                f"if (auto *sd = {parent_expr}) {{ {expression} }} else {{ ESP_LOGE(\"sd_mmc_card\", \"Missing sd_mmc_card_id and no default instance\"); }}"
-            )
-        )
+        cg.add(cg.RawExpression(expression))
     
     if sensor_type == "sd_card_type":
         if parent is None:
-            add_default(f"sd->register_card_type_text_sensor({sens})")
+            add_default(f"{parent_expr}->register_card_type_text_sensor({sens})")
         else:
             cg.add(parent.register_card_type_text_sensor(sens))
     elif sensor_type == "file_content":
         if parent is None:
-            add_default(f"sd->register_file_content_text_sensor({sens})")
+            add_default(f"{parent_expr}->register_file_content_text_sensor({sens})")
         else:
             cg.add(parent.register_file_content_text_sensor(sens))
     elif sensor_type == "fs_type":
         if parent is None:
-            add_default(f"sd->register_fs_type_text_sensor({sens})")
+            add_default(f"{parent_expr}->register_fs_type_text_sensor({sens})")
         else:
             cg.add(parent.register_fs_type_text_sensor(sens))
