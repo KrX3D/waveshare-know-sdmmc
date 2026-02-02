@@ -41,30 +41,26 @@ async def to_code(config):
     parent_expr = "sd_mmc_card::SdMmcCard::get_default()"
 
     def add_default(expression):
-        cg.add(
-            cg.RawExpression(
-                f"if (auto *sd = {parent_expr}) {{ {expression} }} else {{ ESP_LOGE(\"sd_mmc_card\", \"Missing sd_mmc_card_id and no default instance\"); }}"
-            )
-        )
+        cg.add(cg.RawExpression(expression))
     
     if sensor_type == "total_space":
         if parent is None:
-            add_default(f"sd->register_total_space_sensor({sens})")
+            add_default(f"{parent_expr}->register_total_space_sensor({sens})")
         else:
             cg.add(parent.register_total_space_sensor(sens))
     elif sensor_type == "used_space":
         if parent is None:
-            add_default(f"sd->register_used_space_sensor({sens})")
+            add_default(f"{parent_expr}->register_used_space_sensor({sens})")
         else:
             cg.add(parent.register_used_space_sensor(sens))
     elif sensor_type == "free_space":
         if parent is None:
-            add_default(f"sd->register_free_space_sensor({sens})")
+            add_default(f"{parent_expr}->register_free_space_sensor({sens})")
         else:
             cg.add(parent.register_free_space_sensor(sens))
     elif sensor_type == "frequency":
         if parent is None:
-            add_default(f"sd->register_frequency_sensor({sens})")
+            add_default(f"{parent_expr}->register_frequency_sensor({sens})")
         else:
             cg.add(parent.register_frequency_sensor(sens))
     elif sensor_type == "file_size":
@@ -74,7 +70,7 @@ async def to_code(config):
         if parent is None:
             quoted = json.dumps(path)
             add_default(
-                f"sd->register_file_size_sensor({sens}, std::string({quoted}))"
+                f"{parent_expr}->register_file_size_sensor({sens}, std::string({quoted}))"
             )
         else:
             cg.add(parent.register_file_size_sensor(sens, path))
