@@ -6,6 +6,7 @@
 #include "driver/sdmmc_defs.h"
 #include "sdmmc_cmd.h"
 #include "esp_vfs_fat.h"
+#include "esp_idf_version.h"
 #include "ff.h"
 #include <sys/stat.h>
 #include <cerrno>
@@ -34,6 +35,16 @@ static std::string fatfs_path_(const std::string &path) {
 }
 
 void SdMmcCard::setup() {
+  if (!this->mount_card_()) {
+    mark_failed();
+    return;
+  }
+
+  // Publish initial sensor values
+  update_sensors_();
+}
+
+bool SdMmcCard::mount_card_() {
   sdmmc_host_t host = SDMMC_HOST_DEFAULT();
   sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
 
@@ -54,24 +65,46 @@ void SdMmcCard::setup() {
 
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Mount failed: %s", esp_err_to_name(err));
-    mark_failed();
-    return;
+    return false;
   }
 
-  // Store card info
-  if (card_) {
-    switch (card_->ocr & SD_OCR_SDHC_CAP) {
-      case 0: card_type_ = CardType::SDSC; break;
-      default: card_type_ = CardType::SDHC; break;
-    }
-    card_freq_khz_ = card_->max_freq_khz;
-  }
+  update_card_info_();
 
   ESP_LOGI(TAG, "Mounted at %s (%s-bit, %d kHz)",
            MOUNT_POINT, mode_1bit_ ? "1" : "4", card_freq_khz_);
-  
-  // Publish initial sensor values
-  update_sensors_();
+  return true;
+}
+
+bool SdMmcCard::unmount_card_() {
+  if (card_ == nullptr) {
+    ESP_LOGW(TAG, "Unmount requested but card is not mounted");
+    return false;
+  }
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  esp_err_t err = esp_vfs_fat_sdcard_unmount(MOUNT_POINT, card_);
+#else
+  esp_err_t err = esp_vfs_fat_sdmmc_unmount();
+#endif
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Unmount failed: %s", esp_err_to_name(err));
+    return false;
+  }
+  card_ = nullptr;
+  ESP_LOGI(TAG, "Unmounted %s", MOUNT_POINT);
+  return true;
+}
+
+void SdMmcCard::update_card_info_() {
+  if (!card_) {
+    card_type_ = CardType::UNKNOWN;
+    card_freq_khz_ = 0;
+    return;
+  }
+  switch (card_->ocr & SD_OCR_SDHC_CAP) {
+    case 0: card_type_ = CardType::SDSC; break;
+    default: card_type_ = CardType::SDHC; break;
+  }
+  card_freq_khz_ = card_->max_freq_khz;
 }
 
 void SdMmcCard::dump_config() {
@@ -80,6 +113,17 @@ void SdMmcCard::dump_config() {
   ESP_LOGCONFIG(TAG, "  Mode: %s-bit", mode_1bit_ ? "1" : "4");
   ESP_LOGCONFIG(TAG, "  Card Type: %s", card_type_string_().c_str());
   ESP_LOGCONFIG(TAG, "  Frequency: %d kHz", card_freq_khz_);
+  ESP_LOGCONFIG(TAG, "  Filesystem: %s", fs_type_string_().c_str());
+  ESP_LOGCONFIG(TAG, "  Sensors: total=%s used=%s free=%s freq=%s file_size=%s",
+                total_space_sensor_ ? "on" : "off",
+                used_space_sensor_ ? "on" : "off",
+                free_space_sensor_ ? "on" : "off",
+                frequency_sensor_ ? "on" : "off",
+                file_size_sensor_ ? "on" : "off");
+  ESP_LOGCONFIG(TAG, "  Text Sensors: card_type=%s file_content=%s fs_type=%s",
+                card_type_sensor_ ? "on" : "off",
+                file_content_sensor_ ? "on" : "off",
+                fs_type_sensor_ ? "on" : "off");
 }
 
 void SdMmcCard::loop() {
@@ -110,6 +154,9 @@ void SdMmcCard::update_sensors_() {
   
   if (card_type_sensor_)
     card_type_sensor_->publish_state(card_type_string_());
+
+  if (fs_type_sensor_)
+    fs_type_sensor_->publish_state(fs_type_string_());
 }
 
 std::string SdMmcCard::card_type_string_() {
@@ -118,6 +165,24 @@ std::string SdMmcCard::card_type_string_() {
     case CardType::SDSC: return "SDSC";
     case CardType::SDHC: return "SDHC";
     case CardType::SDXC: return "SDXC";
+    default: return "UNKNOWN";
+  }
+}
+
+std::string SdMmcCard::fs_type_string_() {
+  FATFS *fs;
+  DWORD free_clust;
+  FRESULT result = f_getfree(FATFS_ROOT, &free_clust, &fs);
+  if (result != FR_OK || fs == nullptr)
+    return "UNKNOWN";
+
+  switch (fs->fs_type) {
+    case FS_FAT12: return "FAT12";
+    case FS_FAT16: return "FAT16";
+    case FS_FAT32: return "FAT32";
+#ifdef FS_EXFAT
+    case FS_EXFAT: return "exFAT";
+#endif
     default: return "UNKNOWN";
   }
 }
@@ -193,16 +258,35 @@ bool SdMmcCard::delete_file(const std::string &path) {
 }
 
 bool SdMmcCard::format_card() {
+  if (!this->unmount_card_()) {
+    return false;
+  }
   MKFS_PARM opt{};
   opt.fmt = FM_ANY;
   uint8_t work[4096];
   FRESULT result = f_mkfs(FATFS_ROOT, &opt, work, sizeof(work));
   if (result == FR_OK) {
-    ESP_LOGW(TAG, "Formatted card at %s; remount required", FATFS_ROOT);
+    ESP_LOGW(TAG, "Formatted card at %s; remounting", FATFS_ROOT);
+    if (!this->mount_card_()) {
+      ESP_LOGE(TAG, "Remount failed after format");
+      return false;
+    }
+    update_sensors_();
     return true;
   }
   ESP_LOGE(TAG, "Failed to format card at %s (fatfs err: %d)", FATFS_ROOT, result);
   return false;
+}
+
+bool SdMmcCard::remount_card() {
+  if (!this->unmount_card_()) {
+    return false;
+  }
+  if (!this->mount_card_()) {
+    return false;
+  }
+  update_sensors_();
+  return true;
 }
 
 /* ---------- dirs ---------- */

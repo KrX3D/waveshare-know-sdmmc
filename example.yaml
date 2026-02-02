@@ -104,6 +104,12 @@ text_sensor:
     name: "SD File Content"
     id: sd_file_content_sensor
 
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: fs_type
+    name: "SD Filesystem"
+    id: sd_filesystem_sensor
+
 # Buttons
 button:
   - platform: template
@@ -212,7 +218,7 @@ button:
       then:
         - lambda: |-
             if (id(esp_sd_card).format_card()) {
-              ESP_LOGW("sd_card", "Format complete; remount required");
+              ESP_LOGW("sd_card", "Format complete; remounted");
             } else {
               ESP_LOGE("sd_card", "Format failed");
             }

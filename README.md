@@ -131,11 +131,17 @@ text_sensor:
     sd_mmc_card_id: esp_sd_card
     type: file_content
     name: "SD File Content"
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: fs_type
+    name: "SD Filesystem"
 ```
 
 #### Text sensor reference
 - **sd_card_type**: Card type (MMC/SDSC/SDHC/SDXC/UNKNOWN).
 - **file_content**: String contents of the last read file when you publish it.
+- **fs_type**: Filesystem type (FAT12/FAT16/FAT32/exFAT/UNKNOWN).
 
 ### Methods you can call from lambdas
 ```cpp
@@ -156,7 +162,7 @@ id(esp_sd_card).file_size("/test.txt");
 - **append_file**: Append data to an existing file.
 - **read_file**: Read file contents into a string.
 - **delete_file**: Remove a file from the card.
-- **format_card**: Format the card (remount required afterward).
+- **format_card**: Format the card (automatic remount afterward).
 - **create_directory/remove_directory**: Manage directories.
 - **list_directory/list_directory_file_info**: Enumerate directory entries.
 - **file_size**: Returns the size of a file in bytes.
@@ -170,10 +176,18 @@ button:
       then:
         - lambda: |-
             if (id(esp_sd_card).format_card()) {
-              ESP_LOGW("sd_card", "Format complete; remount required");
+              ESP_LOGW("sd_card", "Format complete; remounted");
             } else {
               ESP_LOGE("sd_card", "Format failed");
             }
+```
+
+#### Filesystem type text sensor example
+```yaml
+text_sensor:
+  - platform: sd_mmc_card
+    type: fs_type
+    name: "SD Filesystem"
 ```
 
 ## Full Example
@@ -183,5 +197,7 @@ buttons and sensors.
 ## Notes
 - Paths are relative to the SD mount, so use `/` prefixes (e.g., `/test.txt`).
 - `sd_mmc_card_id` is required for sensors and text sensors to reference the
-  component instance (ESPHome cannot infer the component ID automatically).
+  component instance.
 - `frequency` is reported in kHz.
+- Formatting remounts the card and refreshes sensors, so space metrics update
+  after format.
