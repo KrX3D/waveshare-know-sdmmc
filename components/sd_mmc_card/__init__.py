@@ -29,7 +29,10 @@ CONFIG_SCHEMA = cv.Schema({
 
 async def to_code(cfg):
     var = cg.new_Pvariable(cfg[CONF_ID])
-    await cg.register_component(var, cfg)
+    # Prevent registering the same component twice
+    if not hasattr(var, "_registered"):
+        await cg.register_component(var, cfg)
+        var._registered = True
 
     cg.add(var.set_clk_pin(cfg[CONF_CLK_PIN]))
     cg.add(var.set_cmd_pin(cfg[CONF_CMD_PIN]))
