@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/core/component.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include <vector>
 #include <string>
@@ -26,6 +27,8 @@ class SdMmcCard : public Component {
  public:
   void setup() override;
   void dump_config() override;
+  void loop() override;
+  float get_setup_priority() const override { return setup_priority::DATA; }
 
   // config
   void set_clk_pin(uint8_t pin) { clk_pin_ = pin; }
@@ -58,30 +61,37 @@ class SdMmcCard : public Component {
 
   CardType card_type() const { return card_type_; }
 
-  // --- NEW: text sensor registration ---
+  // sensor registration
+  void register_total_space_sensor(sensor::Sensor *s) { total_space_sensor_ = s; }
+  void register_used_space_sensor(sensor::Sensor *s) { used_space_sensor_ = s; }
+  void register_free_space_sensor(sensor::Sensor *s) { free_space_sensor_ = s; }
+  void register_file_size_sensor(sensor::Sensor *s, const std::string &path) {
+    file_size_sensor_ = s;
+    file_size_path_ = path;
+  }
+
+  // text sensor registration
   void register_card_type_text_sensor(text_sensor::TextSensor *ts) { card_type_sensor_ = ts; }
   void register_file_content_text_sensor(text_sensor::TextSensor *ts) { file_content_sensor_ = ts; }
-  
-
-  void publish_card_type(const std::string &type) {
-    if (card_type_sensor_)
-      card_type_sensor_->publish_state(type.c_str());
-  }
-
-  void publish_file_content(const std::string &content) {
-    if (file_content_sensor_)
-      file_content_sensor_->publish_state(content.c_str());
-  }
 
  protected:
   void scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out);
+  void update_sensors_();
+  std::string card_type_string_();
 
   uint8_t clk_pin_{0}, cmd_pin_{0}, d0_pin_{0}, d1_pin_{0}, d2_pin_{0}, d3_pin_{0};
   bool mode_1bit_{false};
 
   CardType card_type_{CardType::UNKNOWN};
 
-  // --- NEW: pointers to text sensors ---
+  // sensors
+  sensor::Sensor *total_space_sensor_{nullptr};
+  sensor::Sensor *used_space_sensor_{nullptr};
+  sensor::Sensor *free_space_sensor_{nullptr};
+  sensor::Sensor *file_size_sensor_{nullptr};
+  std::string file_size_path_;
+
+  // text sensors
   text_sensor::TextSensor *card_type_sensor_{nullptr};
   text_sensor::TextSensor *file_content_sensor_{nullptr};
 };

@@ -48,12 +48,53 @@ void SdMmcCard::setup() {
 
   ESP_LOGI(TAG, "Mounted at %s (%s-bit)",
            MOUNT_POINT, mode_1bit_ ? "1" : "4");
+  
+  // Publish initial sensor values
+  update_sensors_();
 }
 
 void SdMmcCard::dump_config() {
   ESP_LOGCONFIG(TAG, "SD MMC Card:");
   ESP_LOGCONFIG(TAG, "  Mount: %s", MOUNT_POINT);
   ESP_LOGCONFIG(TAG, "  Mode: %s-bit", mode_1bit_ ? "1" : "4");
+  ESP_LOGCONFIG(TAG, "  Card Type: %s", card_type_string_().c_str());
+}
+
+void SdMmcCard::loop() {
+  // Update sensors periodically
+  static uint32_t last_update = 0;
+  uint32_t now = millis();
+  if (now - last_update > 60000) {  // Update every 60 seconds
+    update_sensors_();
+    last_update = now;
+  }
+}
+
+void SdMmcCard::update_sensors_() {
+  if (total_space_sensor_)
+    total_space_sensor_->publish_state(total_space());
+  
+  if (used_space_sensor_)
+    used_space_sensor_->publish_state(used_space());
+  
+  if (free_space_sensor_)
+    free_space_sensor_->publish_state(free_space());
+  
+  if (file_size_sensor_ && !file_size_path_.empty())
+    file_size_sensor_->publish_state(file_size(file_size_path_));
+  
+  if (card_type_sensor_)
+    card_type_sensor_->publish_state(card_type_string_());
+}
+
+std::string SdMmcCard::card_type_string_() {
+  switch (card_type_) {
+    case CardType::MMC: return "MMC";
+    case CardType::SDSC: return "SDSC";
+    case CardType::SDHC: return "SDHC";
+    case CardType::SDXC: return "SDXC";
+    default: return "UNKNOWN";
+  }
 }
 
 /* ---------- file ops ---------- */
@@ -63,6 +104,11 @@ bool SdMmcCard::write_file(const std::string &path, const std::string &data) {
   if (!f) return false;
   fwrite(data.data(), 1, data.size(), f);
   fclose(f);
+  
+  // Update file size sensor if monitoring this file
+  if (file_size_sensor_ && file_size_path_ == path)
+    file_size_sensor_->publish_state(file_size(path));
+  
   return true;
 }
 
@@ -71,6 +117,11 @@ bool SdMmcCard::append_file(const std::string &path, const std::string &data) {
   if (!f) return false;
   fwrite(data.data(), 1, data.size(), f);
   fclose(f);
+  
+  // Update file size sensor if monitoring this file
+  if (file_size_sensor_ && file_size_path_ == path)
+    file_size_sensor_->publish_state(file_size(path));
+  
   return true;
 }
 
@@ -86,7 +137,13 @@ bool SdMmcCard::read_file(const std::string &path, std::string &out) {
 }
 
 bool SdMmcCard::delete_file(const std::string &path) {
-  return unlink((std::string(MOUNT_POINT) + path).c_str()) == 0;
+  bool result = unlink((std::string(MOUNT_POINT) + path).c_str()) == 0;
+  
+  // Update file size sensor if monitoring this file
+  if (result && file_size_sensor_ && file_size_path_ == path)
+    file_size_sensor_->publish_state(0);
+  
+  return result;
 }
 
 /* ---------- dirs ---------- */
@@ -111,6 +168,57 @@ size_t SdMmcCard::file_size(const std::string &path) {
   if (stat((std::string(MOUNT_POINT) + path).c_str(), &st) != 0)
     return 0;
   return st.st_size;
+}
+
+/* ---------- list directory ---------- */
+
+std::vector<std::string> SdMmcCard::list_directory(const std::string &path, uint8_t depth) {
+  std::vector<FileInfo> file_infos;
+  scan_dir_(path, depth, file_infos);
+  
+  std::vector<std::string> result;
+  for (const auto &info : file_infos) {
+    result.push_back(info.path);
+  }
+  return result;
+}
+
+std::vector<FileInfo> SdMmcCard::list_directory_file_info(const std::string &path, uint8_t depth) {
+  std::vector<FileInfo> result;
+  scan_dir_(path, depth, result);
+  return result;
+}
+
+void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out) {
+  if (depth == 0) return;
+  
+  std::string full_path = std::string(MOUNT_POINT) + path;
+  DIR *dir = opendir(full_path.c_str());
+  if (!dir) return;
+  
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != nullptr) {
+    // Skip . and ..
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+      continue;
+    
+    std::string entry_path = path;
+    if (!entry_path.empty() && entry_path.back() != '/')
+      entry_path += "/";
+    entry_path += entry->d_name;
+    
+    struct stat st{};
+    std::string full_entry = std::string(MOUNT_POINT) + entry_path;
+    if (stat(full_entry.c_str(), &st) == 0) {
+      bool is_dir = S_ISDIR(st.st_mode);
+      out.push_back(FileInfo{entry_path, (size_t)st.st_size, is_dir});
+      
+      if (is_dir && depth > 1) {
+        scan_dir_(entry_path, depth - 1, out);
+      }
+    }
+  }
+  closedir(dir);
 }
 
 /* ---------- space ---------- */
