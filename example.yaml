@@ -1,0 +1,85 @@
+external_components:
+  - source:
+      type: git
+      url: https://github.com/KrX3D/waveshare-know-sdmmc
+      ref: main
+    components: [sd_mmc_card]
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_FATFS_LFN_STACK: "y"
+
+time:
+  - platform: sntp
+    id: time_comp
+
+sd_mmc_card:
+  id: esp_sd_card
+  mode_1bit: false
+  clk_pin: 4
+  cmd_pin: 3
+  data0_pin: 5
+  data1_pin: 6
+  data2_pin: 42
+  data3_pin: 2
+
+button:
+  - platform: template
+    name: "SD Write + Timestamp"
+    on_press:
+      then:
+        - lambda: |-
+            auto t = id(time_comp).now();
+            char buf[128];
+            snprintf(buf, sizeof(buf),
+              "Written at %04d-%02d-%02d %02d:%02d:%02d\n",
+              t.year, t.month, t.day_of_month,
+              t.hour, t.minute, t.second);
+
+            id(esp_sd_card).write_file("/test.txt", std::string(buf));
+
+  - platform: template
+    name: "SD Read"
+    on_press:
+      then:
+        - lambda: |-
+            std::string out;
+            if (id(esp_sd_card).read_file("/test.txt", out))
+              id(sd_file_content).publish_state(out);
+            else
+              id(sd_file_content).publish_state("read failed");
+
+sensor:
+  - platform: sd_mmc_card
+    id: esp_sd_card
+    type: total_space
+    name: "SD Total Space"
+
+  - platform: sd_mmc_card
+    id: esp_sd_card
+    type: free_space
+    name: "SD Free Space"
+
+  - platform: sd_mmc_card
+    id: esp_sd_card
+    type: used_space
+    name: "SD Used Space"
+
+  - platform: sd_mmc_card
+    id: esp_sd_card
+    type: file_size
+    path: "/test.txt"
+    name: "Test.txt size"
+
+text_sensor:
+  - platform: sd_mmc_card
+    id: esp_sd_card
+    type: sd_card_type
+    name: "SD Card Type"
+
+  - platform: template
+    id: sd_file_content
+    name: "SD File Content"
