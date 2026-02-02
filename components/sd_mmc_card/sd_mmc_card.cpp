@@ -63,7 +63,7 @@ void SdMmcCard::dump_config() {
 void SdMmcCard::loop() {
   // Update sensors periodically
   static uint32_t last_update = 0;
-  uint32_t now = millis();
+  uint32_t now = esphome::millis();
   if (now - last_update > 60000) {  // Update every 60 seconds
     update_sensors_();
     last_update = now;
