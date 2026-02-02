@@ -4,6 +4,7 @@ from esphome.const import CONF_ID
 from esphome import pins
 
 DEPENDENCIES = ["esp32"]
+AUTO_LOAD = ["sensor", "text_sensor"]
 
 sd_ns = cg.esphome_ns.namespace("sd_mmc_card")
 SdMmcCard = sd_ns.class_("SdMmcCard", cg.Component)

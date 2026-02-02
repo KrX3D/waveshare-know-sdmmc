@@ -1,25 +1,28 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import text_sensor
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_TYPE
 from . import SdMmcCard, sd_ns
 
-CONF_SD_CARD_TYPE = "sd_card_type"
-CONF_FILE_CONTENT = "file_content"
+CONF_SD_MMC_CARD_ID = "sd_mmc_card_id"
 
-CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(CONF_ID): cv.use_id(SdMmcCard),
-    cv.Optional(CONF_SD_CARD_TYPE): text_sensor.text_sensor_schema(),
-    cv.Optional(CONF_FILE_CONTENT): text_sensor.text_sensor_schema(),
+TEXT_SENSOR_TYPES = {
+    "sd_card_type": "SD Card Type",
+    "file_content": "File Content",
+}
+
+CONFIG_SCHEMA = text_sensor.text_sensor_schema().extend({
+    cv.GenerateID(CONF_SD_MMC_CARD_ID): cv.use_id(SdMmcCard),
+    cv.Required(CONF_TYPE): cv.enum(TEXT_SENSOR_TYPES, lower=True),
 })
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_ID])
+    parent = await cg.get_variable(config[CONF_SD_MMC_CARD_ID])
+    sens = await text_sensor.new_text_sensor(config)
     
-    if CONF_SD_CARD_TYPE in config:
-        sens = await text_sensor.new_text_sensor(config[CONF_SD_CARD_TYPE])
+    sensor_type = config[CONF_TYPE]
+    
+    if sensor_type == "sd_card_type":
         cg.add(parent.register_card_type_text_sensor(sens))
-    
-    if CONF_FILE_CONTENT in config:
-        sens = await text_sensor.new_text_sensor(config[CONF_FILE_CONTENT])
+    elif sensor_type == "file_content":
         cg.add(parent.register_file_content_text_sensor(sens))

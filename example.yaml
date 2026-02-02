@@ -32,25 +32,45 @@ sd_mmc_card:
   data1_pin: GPIO6
   data2_pin: GPIO42
   data3_pin: GPIO2
-  # Sensors are now configured separately below
-  total_space:
+
+# Sensors (as separate platform entries)
+sensor:
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: total_space
     name: "SD Total Space"
     id: sd_total_space
-  used_space:
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: used_space
     name: "SD Used Space"
     id: sd_used_space
-  free_space:
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: free_space
     name: "SD Free Space"
     id: sd_free_space
-  file_size:
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: file_size
+    path: "/test.txt"
     name: "Test.txt Size"
     id: test_file_size
-    path: "/test.txt"
-  # Text sensors
-  sd_card_type:
+
+# Text Sensors (as separate platform entries)
+text_sensor:
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: sd_card_type
     name: "SD Card Type"
     id: sd_card_type_sensor
-  file_content:
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: file_content
     name: "SD File Content"
     id: sd_file_content_sensor
 
@@ -81,6 +101,8 @@ button:
             std::string out;
             if (id(esp_sd_card).read_file("/test.txt", out)) {
               ESP_LOGI("sd_card", "Read: %s", out.c_str());
+              // Optionally publish to text sensor
+              id(sd_file_content_sensor).publish_state(out);
             } else {
               ESP_LOGE("sd_card", "Read failed");
             }
