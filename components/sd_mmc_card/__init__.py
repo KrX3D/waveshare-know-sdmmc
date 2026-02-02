@@ -18,18 +18,18 @@ CONF_MODE_1BIT = "mode_1bit"
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(SdMmcCard),
-    cv.Required("clk_pin"): pins.internal_gpio_output_pin_number,
-    cv.Required("cmd_pin"): pins.internal_gpio_output_pin_number,
-    cv.Required("data0_pin"): pins.internal_gpio_pin_number,
-    cv.Optional("data1_pin"): pins.internal_gpio_pin_number,
-    cv.Optional("data2_pin"): pins.internal_gpio_pin_number,
-    cv.Optional("data3_pin"): pins.internal_gpio_pin_number,
-    cv.Optional("mode_1bit", default=False): cv.boolean,
+    cv.Required(CONF_CLK_PIN): pins.internal_gpio_output_pin_number,
+    cv.Required(CONF_CMD_PIN): pins.internal_gpio_output_pin_number,
+    cv.Required(CONF_DATA0_PIN): pins.internal_gpio_pin_number,
+    cv.Optional(CONF_DATA1_PIN): pins.internal_gpio_pin_number,
+    cv.Optional(CONF_DATA2_PIN): pins.internal_gpio_pin_number,
+    cv.Optional(CONF_DATA3_PIN): pins.internal_gpio_pin_number,
+    cv.Optional(CONF_MODE_1BIT, default=False): cv.boolean,
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(cfg):
     var = cg.new_Pvariable(cfg[CONF_ID])
-    # Prevent registering the same component twice
+    # Only register once
     if not hasattr(var, "_registered"):
         await cg.register_component(var, cfg)
         var._registered = True
