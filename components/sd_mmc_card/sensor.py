@@ -15,6 +15,7 @@ SENSOR_TYPES = {
     "total_space": "Total Space",
     "used_space": "Used Space", 
     "free_space": "Free Space",
+    "frequency": "Card Frequency",
     "file_size": "File Size",
 }
 
@@ -39,6 +40,8 @@ async def to_code(config):
         cg.add(parent.register_used_space_sensor(sens))
     elif sensor_type == "free_space":
         cg.add(parent.register_free_space_sensor(sens))
+    elif sensor_type == "frequency":
+        cg.add(parent.register_frequency_sensor(sens))
     elif sensor_type == "file_size":
         if CONF_PATH not in config:
             raise cv.Invalid(f"'path' is required for file_size sensor")

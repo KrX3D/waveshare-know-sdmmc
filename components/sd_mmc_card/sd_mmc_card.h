@@ -47,6 +47,7 @@ class SdMmcCard : public Component {
   bool append_file(const std::string &path, const std::string &data);
   bool read_file(const std::string &path, std::string &out);
   bool delete_file(const std::string &path);
+  bool format_card();
 
   bool create_directory(const std::string &path);
   bool remove_directory(const std::string &path);
@@ -68,6 +69,7 @@ class SdMmcCard : public Component {
   void register_total_space_sensor(sensor::Sensor *s) { total_space_sensor_ = s; }
   void register_used_space_sensor(sensor::Sensor *s) { used_space_sensor_ = s; }
   void register_free_space_sensor(sensor::Sensor *s) { free_space_sensor_ = s; }
+  void register_frequency_sensor(sensor::Sensor *s) { frequency_sensor_ = s; }
   void register_file_size_sensor(sensor::Sensor *s, const std::string &path) {
     file_size_sensor_ = s;
     file_size_path_ = path;
@@ -93,6 +95,7 @@ class SdMmcCard : public Component {
   sensor::Sensor *total_space_sensor_{nullptr};
   sensor::Sensor *used_space_sensor_{nullptr};
   sensor::Sensor *free_space_sensor_{nullptr};
+  sensor::Sensor *frequency_sensor_{nullptr};
   sensor::Sensor *file_size_sensor_{nullptr};
   std::string file_size_path_;
 
