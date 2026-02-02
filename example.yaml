@@ -40,18 +40,38 @@ sensor:
     type: total_space
     name: "SD Total Space"
     id: sd_total_space
+    unit_of_measurement: "MB"
+    accuracy_decimals: 2
+    filters:
+      - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
     sd_mmc_card_id: esp_sd_card
     type: used_space
     name: "SD Used Space"
     id: sd_used_space
+    unit_of_measurement: "MB"
+    accuracy_decimals: 2
+    filters:
+      - lambda: return x / 1024.0 / 1024.0;
 
   - platform: sd_mmc_card
     sd_mmc_card_id: esp_sd_card
     type: free_space
     name: "SD Free Space"
     id: sd_free_space
+    unit_of_measurement: "MB"
+    accuracy_decimals: 2
+    filters:
+      - lambda: return x / 1024.0 / 1024.0;
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: frequency
+    name: "SD Frequency"
+    id: sd_frequency
+    unit_of_measurement: "kHz"
+    accuracy_decimals: 0
 
   - platform: sd_mmc_card
     sd_mmc_card_id: esp_sd_card
@@ -59,6 +79,8 @@ sensor:
     path: "/test.txt"
     name: "Test.txt Size"
     id: test_file_size
+    unit_of_measurement: "B"
+    accuracy_decimals: 0
 
 # Text Sensors (as separate platform entries)
 text_sensor:
@@ -141,6 +163,28 @@ button:
               ESP_LOGI("sd_card", "Directory created");
             } else {
               ESP_LOGE("sd_card", "Failed to create directory");
+            }
+
+  - platform: template
+    name: "SD Remove Directory"
+    on_press:
+      then:
+        - lambda: |-
+            if (id(esp_sd_card).remove_directory("/testdir")) {
+              ESP_LOGI("sd_card", "Directory removed");
+            } else {
+              ESP_LOGE("sd_card", "Failed to remove directory");
+            }
+
+  - platform: template
+    name: "SD Append to File"
+    on_press:
+      then:
+        - lambda: |-
+            if (id(esp_sd_card).append_file("/test.txt", "\nAppended line")) {
+              ESP_LOGI("sd_card", "Append successful");
+            } else {
+              ESP_LOGE("sd_card", "Append failed");
             }
 
   - platform: template

@@ -8,6 +8,7 @@
 #include "esp_vfs_fat.h"
 #include "ff.h"
 #include <sys/stat.h>
+#include <cerrno>
 #include <cstring>
 
 namespace esphome {
@@ -125,9 +126,13 @@ std::string SdMmcCard::card_type_string_() {
 
 bool SdMmcCard::write_file(const std::string &path, const std::string &data) {
   FILE *f = fopen((std::string(MOUNT_POINT) + path).c_str(), "w");
-  if (!f) return false;
+  if (!f) {
+    ESP_LOGE(TAG, "Write failed to open %s (errno: %d)", path.c_str(), errno);
+    return false;
+  }
   fwrite(data.data(), 1, data.size(), f);
   fclose(f);
+  ESP_LOGI(TAG, "Wrote %u bytes to %s", static_cast<unsigned>(data.size()), path.c_str());
   
   // Update file size sensor if monitoring this file
   if (file_size_sensor_ && file_size_path_ == path)
@@ -138,9 +143,13 @@ bool SdMmcCard::write_file(const std::string &path, const std::string &data) {
 
 bool SdMmcCard::append_file(const std::string &path, const std::string &data) {
   FILE *f = fopen((std::string(MOUNT_POINT) + path).c_str(), "a");
-  if (!f) return false;
+  if (!f) {
+    ESP_LOGE(TAG, "Append failed to open %s (errno: %d)", path.c_str(), errno);
+    return false;
+  }
   fwrite(data.data(), 1, data.size(), f);
   fclose(f);
+  ESP_LOGI(TAG, "Appended %u bytes to %s", static_cast<unsigned>(data.size()), path.c_str());
   
   // Update file size sensor if monitoring this file
   if (file_size_sensor_ && file_size_path_ == path)
@@ -151,34 +160,60 @@ bool SdMmcCard::append_file(const std::string &path, const std::string &data) {
 
 bool SdMmcCard::read_file(const std::string &path, std::string &out) {
   FILE *f = fopen((std::string(MOUNT_POINT) + path).c_str(), "r");
-  if (!f) return false;
+  if (!f) {
+    ESP_LOGE(TAG, "Read failed to open %s (errno: %d)", path.c_str(), errno);
+    return false;
+  }
   char buf[256];
   out.clear();
-  while (fgets(buf, sizeof(buf), f))
+  size_t total_read = 0;
+  while (fgets(buf, sizeof(buf), f)) {
+    total_read += strlen(buf);
     out += buf;
+  }
   fclose(f);
+  ESP_LOGI(TAG, "Read %u bytes from %s", static_cast<unsigned>(total_read), path.c_str());
   return true;
 }
 
 bool SdMmcCard::delete_file(const std::string &path) {
-  bool result = f_unlink(fatfs_path_(path).c_str()) == FR_OK;
+  FRESULT result = f_unlink(fatfs_path_(path).c_str());
+  bool removed = result == FR_OK;
+  if (removed) {
+    ESP_LOGI(TAG, "Deleted file %s", path.c_str());
+  } else {
+    ESP_LOGE(TAG, "Failed to delete file %s (fatfs err: %d)", path.c_str(), result);
+  }
   
   // Update file size sensor if monitoring this file
-  if (result && file_size_sensor_ && file_size_path_ == path)
+  if (removed && file_size_sensor_ && file_size_path_ == path)
     file_size_sensor_->publish_state(0);
   
-  return result;
+  return removed;
 }
 
 /* ---------- dirs ---------- */
 
 bool SdMmcCard::create_directory(const std::string &path) {
   FRESULT result = f_mkdir(fatfs_path_(path).c_str());
-  return result == FR_OK || result == FR_EXIST;
+  bool created = result == FR_OK || result == FR_EXIST;
+  if (created) {
+    ESP_LOGI(TAG, "Directory ready: %s", path.c_str());
+  } else {
+    ESP_LOGE(TAG, "Failed to create directory %s (fatfs err: %d)", path.c_str(), result);
+  }
+  return created;
 }
 
 bool SdMmcCard::remove_directory(const std::string &path) {
-  return f_unlink(fatfs_path_(path).c_str()) == FR_OK;
+  FRESULT result = f_unlink(fatfs_path_(path).c_str());
+  bool removed = result == FR_OK;
+  if (removed) {
+    ESP_LOGI(TAG, "Removed directory %s", path.c_str());
+  } else {
+    ESP_LOGE(TAG, "Failed to remove directory %s (fatfs err: %d)", path.c_str(), result);
+  }
+  return removed;
 }
 
 bool SdMmcCard::is_directory(const std::string &path) {
@@ -205,12 +240,16 @@ std::vector<std::string> SdMmcCard::list_directory(const std::string &path, uint
   for (const auto &info : file_infos) {
     result.push_back(info.path);
   }
+  ESP_LOGI(TAG, "Listed %u entries under %s (depth: %u)",
+           static_cast<unsigned>(result.size()), path.c_str(), depth);
   return result;
 }
 
 std::vector<FileInfo> SdMmcCard::list_directory_file_info(const std::string &path, uint8_t depth) {
   std::vector<FileInfo> result;
   scan_dir_(path, depth, result);
+  ESP_LOGI(TAG, "Listed %u entries with info under %s (depth: %u)",
+           static_cast<unsigned>(result.size()), path.c_str(), depth);
   return result;
 }
 

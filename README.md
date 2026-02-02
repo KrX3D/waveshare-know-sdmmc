@@ -1,74 +1,122 @@
-# sd_card_bsp — ESPHome SD/MMC minimal BSP component
+# SD/MMC Card Component for ESPHome
 
-A lightweight ESPHome custom component that mounts an SD/MMC card using ESP-IDF calls
-and exposes simple file and directory helpers to lambdas and the rest of ESPHome.
+This repository provides a custom `sd_mmc_card` component for ESPHome using
+ESP-IDF + FatFs. It mounts an SD/MMC card and exposes file, directory, and
+capacity helpers to automations, along with sensors and text sensors.
 
 ## Features
-- Mount SD/MMC via `esp_vfs_fat_sdmmc_mount()` with configurable pins (1-bit or 4-bit).
-- File operations: write, append, read, delete.
-- Directory operations: list, list with file info, create/remove directory, is_directory.
-- File size and card capacity helper.
-- Optional sensor publishing (total/free/used space, card type).
-- Safe read semantics (use `file_size()` before `read_file()` to avoid out-of-memory).
-
-## Files
-- `sd_card_bsp.h` / `sd_card_bsp.cpp` : component implementation
-- Example usage shown in `example.yaml` below.
+- Mount SD/MMC via `esp_vfs_fat_sdmmc_mount()` on ESP32 (1-bit or 4-bit mode).
+- File helpers: write, append, read, delete, file size.
+- Directory helpers: list, list with file info, create/remove directory.
+- Sensors: total space, used space, free space, **frequency** (kHz), file size.
+- Text sensors: card type, file content.
 
 ## Installation
-1. Create folder: `custom_components/sd_card_bsp/`
-2. Copy `sd_card_bsp.h`, `sd_card_bsp.cpp`, and this README into the folder.
-3. In your ESPHome YAML, include the header and call `init()` from `on_boot` (example below).
+Copy the `components/sd_mmc_card` folder into your ESPHome project’s
+`custom_components/` directory.
 
-## Example YAML
+```
+custom_components/
+  sd_mmc_card/
+    __init__.py
+    sensor.py
+    text_sensor.py
+    sd_mmc_card.h
+    sd_mmc_card.cpp
+```
+
+## Configuration
+
+### Component
 ```yaml
-esphome:
-  name: smartknob
-  includes:
-    - custom_components/sd_card_bsp/sd_card_bsp.h
+sd_mmc_card:
+  id: esp_sd_card
+  mode_1bit: false
+  clk_pin: GPIO4
+  cmd_pin: GPIO3
+  data0_pin: GPIO5
+  data1_pin: GPIO6
+  data2_pin: GPIO42
+  data3_pin: GPIO2
+```
 
-esp32:
-  framework:
-    type: esp-idf
-    sdkconfig_options:
-      CONFIG_FATFS_LFN_STACK: "y"
-      CONFIG_FATFS_FS_LOCK: "y"
-      CONFIG_FATFS_PER_FILE_CACHE: "y"
-      CONFIG_FATFS_USE_FASTSEEK: "y"
-      CONFIG_FATFS_MAX_LFN: "255"
-
-logger:
-  level: DEBUG
-
-text_sensor:
-  - platform: template
-    name: "SD Last Read"
-    id: sd_file_content
-
-# Optional sensors (wired up in on_boot)
+### Sensors
+```yaml
 sensor:
-  - platform: template
-    name: "SD Used Bytes"
-    id: sd_used_bytes
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: total_space
+    name: "SD Total Space"
+    unit_of_measurement: "MB"
+    accuracy_decimals: 2
+    filters:
+      - lambda: return x / 1024.0 / 1024.0;
 
-  - platform: template
-    name: "SD Total Bytes"
-    id: sd_total_bytes
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: used_space
+    name: "SD Used Space"
+    unit_of_measurement: "MB"
+    accuracy_decimals: 2
+    filters:
+      - lambda: return x / 1024.0 / 1024.0;
 
-  - platform: template
-    name: "SD Free Bytes"
-    id: sd_free_bytes
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: free_space
+    name: "SD Free Space"
+    unit_of_measurement: "MB"
+    accuracy_decimals: 2
+    filters:
+      - lambda: return x / 1024.0 / 1024.0;
 
-# initialize and wire the component at boot
-on_boot:
-  then:
-    - lambda: |-
-        using namespace sd_card_bsp;
-        auto sd = get_sd_card_bsp();
-        // init(mode_1bit, clk, cmd, d0, d1, d2, d3, mount_point)
-        sd->init(false, (gpio_num_t)4, (gpio_num_t)3, (gpio_num_t)5, (gpio_num_t)6, (gpio_num_t)42, (gpio_num_t)2, "/sdcard");
-        // optionally attach sensors
-        sd->set_used_space_sensor(id(sd_used_bytes));
-        sd->set_total_space_sensor(id(sd_total_bytes));
-        sd->set_free_space_sensor(id(sd_free_bytes));
-        sd->set_card_type_text_sensor(id(sd_file_content)); // or use separate text sensor
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: frequency
+    name: "SD Frequency"
+    unit_of_measurement: "kHz"
+    accuracy_decimals: 0
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: file_size
+    path: "/test.txt"
+    name: "Test.txt Size"
+    unit_of_measurement: "B"
+    accuracy_decimals: 0
+```
+
+### Text sensors
+```yaml
+text_sensor:
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: sd_card_type
+    name: "SD Card Type"
+
+  - platform: sd_mmc_card
+    sd_mmc_card_id: esp_sd_card
+    type: file_content
+    name: "SD File Content"
+```
+
+### Methods you can call from lambdas
+```cpp
+id(esp_sd_card).write_file("/test.txt", "data");
+id(esp_sd_card).append_file("/test.txt", "\nline");
+id(esp_sd_card).read_file("/test.txt", out);
+id(esp_sd_card).delete_file("/test.txt");
+id(esp_sd_card).create_directory("/testdir");
+id(esp_sd_card).remove_directory("/testdir");
+id(esp_sd_card).list_directory("/", 2);
+id(esp_sd_card).list_directory_file_info("/", 2);
+id(esp_sd_card).file_size("/test.txt");
+```
+
+## Full Example
+See [example.yaml](example.yaml) for a complete working configuration including
+buttons and sensors.
+
+## Notes
+- Paths are relative to the SD mount, so use `/` prefixes (e.g., `/test.txt`).
+- `frequency` is reported in kHz.
