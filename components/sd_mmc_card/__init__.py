@@ -1,6 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
+from esphome import pins
 
 DEPENDENCIES = ["esp32"]
 
@@ -17,13 +18,13 @@ CONF_MODE_1BIT = "mode_1bit"
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(SdMmcCard),
-    cv.Required(CONF_CLK_PIN): cv.uint8_t,
-    cv.Required(CONF_CMD_PIN): cv.uint8_t,
-    cv.Required(CONF_DATA0_PIN): cv.uint8_t,
-    cv.Optional(CONF_DATA1_PIN): cv.uint8_t,
-    cv.Optional(CONF_DATA2_PIN): cv.uint8_t,
-    cv.Optional(CONF_DATA3_PIN): cv.uint8_t,
-    cv.Optional(CONF_MODE_1BIT, default=False): cv.boolean,
+    cv.Required("clk_pin"): pins.internal_gpio_output_pin_number,
+    cv.Required("cmd_pin"): pins.internal_gpio_output_pin_number,
+    cv.Required("data0_pin"): pins.internal_gpio_pin_number,
+    cv.Optional("data1_pin"): pins.internal_gpio_pin_number,
+    cv.Optional("data2_pin"): pins.internal_gpio_pin_number,
+    cv.Optional("data3_pin"): pins.internal_gpio_pin_number,
+    cv.Optional("mode_1bit", default=False): cv.boolean,
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(cfg):
