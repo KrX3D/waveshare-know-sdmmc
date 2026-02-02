@@ -20,7 +20,7 @@ static const char *FATFS_ROOT = "0:";
 static constexpr char kFatfsSeparator = '/';
 
 using FatfsDir = FF_DIR;
-using FatfsFileInfo = FF_FILINFO;
+using FatfsFileInfo = FILINFO;
 
 static std::string fatfs_path_(const std::string &path) {
   if (path.empty()) {
