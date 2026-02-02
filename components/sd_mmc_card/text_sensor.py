@@ -9,7 +9,6 @@ CONF_SD_MMC_CARD_ID = "sd_mmc_card_id"
 TEXT_SENSOR_TYPES = {
     "sd_card_type": "SD Card Type",
     "file_content": "File Content",
-    "fs_type": "Filesystem Type",
 }
 
 CONFIG_SCHEMA = text_sensor.text_sensor_schema().extend({
@@ -40,8 +39,3 @@ async def to_code(config):
             add_default(f"{parent_expr}->register_file_content_text_sensor({sens})")
         else:
             cg.add(parent.register_file_content_text_sensor(sens))
-    elif sensor_type == "fs_type":
-        if parent is None:
-            add_default(f"{parent_expr}->register_fs_type_text_sensor({sens})")
-        else:
-            cg.add(parent.register_fs_type_text_sensor(sens))

@@ -6,7 +6,6 @@
 #include "driver/sdmmc_defs.h"
 #include "sdmmc_cmd.h"
 #include "esp_vfs_fat.h"
-#include "esp_idf_version.h"
 #include "ff.h"
 #include <sys/stat.h>
 #include <cerrno>
@@ -88,11 +87,7 @@ bool SdMmcCard::unmount_card_() {
     ESP_LOGW(TAG, "Unmount requested but card is not mounted");
     return false;
   }
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-  esp_err_t err = esp_vfs_fat_sdcard_unmount(MOUNT_POINT, card_);
-#else
-  esp_err_t err = esp_vfs_fat_sdmmc_unmount();
-#endif
+  esp_err_t err = esp_vfs_fat_sdmmc_unmount(MOUNT_POINT, card_);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Unmount failed: %s", esp_err_to_name(err));
     return false;
@@ -151,9 +146,6 @@ void SdMmcCard::update_sensors_() {
   
   if (card_type_sensor_)
     card_type_sensor_->publish_state(card_type_string_());
-
-  if (fs_type_sensor_)
-    fs_type_sensor_->publish_state(fs_type_string_());
 }
 
 std::string SdMmcCard::card_type_string_() {
@@ -162,24 +154,6 @@ std::string SdMmcCard::card_type_string_() {
     case CardType::SDSC: return "SDSC";
     case CardType::SDHC: return "SDHC";
     case CardType::SDXC: return "SDXC";
-    default: return "UNKNOWN";
-  }
-}
-
-std::string SdMmcCard::fs_type_string_() {
-  FATFS *fs;
-  DWORD free_clust;
-  FRESULT result = f_getfree(FATFS_ROOT, &free_clust, &fs);
-  if (result != FR_OK || fs == nullptr)
-    return "UNKNOWN";
-
-  switch (fs->fs_type) {
-    case FS_FAT12: return "FAT12";
-    case FS_FAT16: return "FAT16";
-    case FS_FAT32: return "FAT32";
-#ifdef FS_EXFAT
-    case FS_EXFAT: return "exFAT";
-#endif
     default: return "UNKNOWN";
   }
 }

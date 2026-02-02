@@ -82,7 +82,6 @@ class SdMmcCard : public Component {
   // text sensor registration
   void register_card_type_text_sensor(text_sensor::TextSensor *ts) { card_type_sensor_ = ts; }
   void register_file_content_text_sensor(text_sensor::TextSensor *ts) { file_content_sensor_ = ts; }
-  void register_fs_type_text_sensor(text_sensor::TextSensor *ts) { fs_type_sensor_ = ts; }
 
  protected:
   bool mount_card_();
@@ -92,7 +91,6 @@ class SdMmcCard : public Component {
   void scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out);
   void update_sensors_();
   std::string card_type_string_();
-  std::string fs_type_string_();
 
   uint8_t clk_pin_{0}, cmd_pin_{0}, d0_pin_{0}, d1_pin_{0}, d2_pin_{0}, d3_pin_{0};
   bool mode_1bit_{false};
@@ -112,7 +110,6 @@ class SdMmcCard : public Component {
   // text sensors
   text_sensor::TextSensor *card_type_sensor_{nullptr};
   text_sensor::TextSensor *file_content_sensor_{nullptr};
-  text_sensor::TextSensor *fs_type_sensor_{nullptr};
 
   static SdMmcCard *default_instance_;
 };
