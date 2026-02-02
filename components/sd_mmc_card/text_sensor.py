@@ -12,17 +12,30 @@ TEXT_SENSOR_TYPES = {
 }
 
 CONFIG_SCHEMA = text_sensor.text_sensor_schema().extend({
-    cv.GenerateID(CONF_SD_MMC_CARD_ID): cv.use_id(SdMmcCard),
+    cv.Optional(CONF_SD_MMC_CARD_ID): cv.use_id(SdMmcCard),
     cv.Required(CONF_TYPE): cv.enum(TEXT_SENSOR_TYPES, lower=True),
 })
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_SD_MMC_CARD_ID])
     sens = await text_sensor.new_text_sensor(config)
     
     sensor_type = config[CONF_TYPE]
+    parent = None
+    if CONF_SD_MMC_CARD_ID in config:
+        parent = await cg.get_variable(config[CONF_SD_MMC_CARD_ID])
+
+    parent_expr = "sd_mmc_card::SdMmcCard::get_default()"
+
+    def add_default(expression):
+        cg.add(cg.RawExpression(expression))
     
     if sensor_type == "sd_card_type":
-        cg.add(parent.register_card_type_text_sensor(sens))
+        if parent is None:
+            add_default(f"{parent_expr}->register_card_type_text_sensor({sens})")
+        else:
+            cg.add(parent.register_card_type_text_sensor(sens))
     elif sensor_type == "file_content":
-        cg.add(parent.register_file_content_text_sensor(sens))
+        if parent is None:
+            add_default(f"{parent_expr}->register_file_content_text_sensor({sens})")
+        else:
+            cg.add(parent.register_file_content_text_sensor(sens))
