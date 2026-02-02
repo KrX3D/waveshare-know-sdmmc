@@ -18,10 +18,11 @@ CONFIG_SCHEMA = cv.All(
 async def to_code(config):
     sd = await cg.get_variable(config[cv.GenerateID()])
 
-    # create a new text_sensor object for this sensor
-    ts = cg.new_Pvariable(config[cv.GenerateID()])
+    # Create a new C++ TextSensor object
+    ts = cg.new_Pvariable(config[CONF_NAME].lower().replace(" ", "_"))
     await text_sensor.register_text_sensor(ts, config[CONF_NAME])
 
+    # Link it to the SD card
     if config[CONF_TYPE] == "sd_card_type":
         cg.add(sd.register_card_type_text_sensor(ts))
     elif config[CONF_TYPE] == "file_content":

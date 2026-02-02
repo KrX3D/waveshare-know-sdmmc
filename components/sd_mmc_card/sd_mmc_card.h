@@ -61,6 +61,7 @@ class SdMmcCard : public Component {
   // --- NEW: text sensor registration ---
   void register_card_type_text_sensor(text_sensor::TextSensor *ts) { card_type_sensor_ = ts; }
   void register_file_content_text_sensor(text_sensor::TextSensor *ts) { file_content_sensor_ = ts; }
+  
 
   void publish_card_type(const std::string &type) {
     if (card_type_sensor_)
