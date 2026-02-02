@@ -19,19 +19,8 @@ static const char *FATFS_ROOT = "0:";
 
 static constexpr char kFatfsSeparator = '/';
 
-using FatfsDir =
-#if defined(FF_DIR)
-    FF_DIR;
-#else
-    DIR;
-#endif
-
-using FatfsFileInfo =
-#if defined(FF_FILINFO)
-    FF_FILINFO;
-#else
-    FILINFO;
-#endif
+using FatfsDir = FF_DIR;
+using FatfsFileInfo = FF_FILINFO;
 
 static std::string fatfs_path_(const std::string &path) {
   if (path.empty()) {
@@ -222,11 +211,11 @@ std::vector<FileInfo> SdMmcCard::list_directory_file_info(const std::string &pat
   return result;
 }
 
-void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out) {␊
-  if (depth == 0) return;␊
-  ␊
+void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out) {
+  if (depth == 0) return;
+  
   std::string full_path = fatfs_path_(path);
-  ESP_LOGD(TAG, "Scanning directory: %s", full_path.c_str());␊
+  ESP_LOGD(TAG, "Scanning directory: %s", full_path.c_str());
 
   FatfsDir dir{};
   FRESULT result = f_opendir(&dir, full_path.c_str());
@@ -257,9 +246,9 @@ void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<Fi
 
     if (is_dir && depth > 1) {
       scan_dir_(entry_path, depth - 1, out);
-    }␊
-  }␊
-  ESP_LOGD(TAG, "Total entries found in %s: %d", path.c_str(), count);␊
+    }
+  }
+  ESP_LOGD(TAG, "Total entries found in %s: %d", path.c_str(), count);
   f_closedir(&dir);
 }
 
