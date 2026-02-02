@@ -8,14 +8,40 @@
 #include "esp_vfs_fat.h"
 #include "ff.h"
 #include <sys/stat.h>
-#include <dirent.h>
-#include <errno.h>
+#include <cstring>
 
 namespace esphome {
 namespace sd_mmc_card {
 
 static const char *TAG = "sd_mmc_card";
 static const char *MOUNT_POINT = "/sdcard";
+static const char *FATFS_ROOT = "0:";
+
+static constexpr char kFatfsSeparator = '/';
+
+using FatfsDir =
+#if defined(FF_DIR)
+    FF_DIR;
+#else
+    DIR;
+#endif
+
+using FatfsFileInfo =
+#if defined(FF_FILINFO)
+    FF_FILINFO;
+#else
+    FILINFO;
+#endif
+
+static std::string fatfs_path_(const std::string &path) {
+  if (path.empty()) {
+    return std::string(FATFS_ROOT) + kFatfsSeparator;
+  }
+  if (path.front() == '/') {
+    return std::string(FATFS_ROOT) + path;
+  }
+  return std::string(FATFS_ROOT) + kFatfsSeparator + path;
+}
 
 void SdMmcCard::setup() {
   sdmmc_host_t host = SDMMC_HOST_DEFAULT();
@@ -155,25 +181,26 @@ bool SdMmcCard::delete_file(const std::string &path) {
 /* ---------- dirs ---------- */
 
 bool SdMmcCard::create_directory(const std::string &path) {
-  return mkdir((std::string(MOUNT_POINT) + path).c_str(), 0775) == 0;
+  FRESULT result = f_mkdir(fatfs_path_(path).c_str());
+  return result == FR_OK || result == FR_EXIST;
 }
 
 bool SdMmcCard::remove_directory(const std::string &path) {
-  return rmdir((std::string(MOUNT_POINT) + path).c_str()) == 0;
+  return f_unlink(fatfs_path_(path).c_str()) == FR_OK;
 }
 
 bool SdMmcCard::is_directory(const std::string &path) {
-  struct stat st{};
-  if (stat((std::string(MOUNT_POINT) + path).c_str(), &st) != 0)
+  FatfsFileInfo info{};
+  if (f_stat(fatfs_path_(path).c_str(), &info) != FR_OK)
     return false;
-  return S_ISDIR(st.st_mode);
+  return (info.fattrib & AM_DIR) != 0;
 }
 
 size_t SdMmcCard::file_size(const std::string &path) {
-  struct stat st{};
-  if (stat((std::string(MOUNT_POINT) + path).c_str(), &st) != 0)
+  FatfsFileInfo info{};
+  if (f_stat(fatfs_path_(path).c_str(), &info) != FR_OK)
     return 0;
-  return st.st_size;
+  return info.fsize;
 }
 
 /* ---------- list directory ---------- */
@@ -198,42 +225,42 @@ std::vector<FileInfo> SdMmcCard::list_directory_file_info(const std::string &pat
 void SdMmcCard::scan_dir_(const std::string &path, uint8_t depth, std::vector<FileInfo> &out) {
   if (depth == 0) return;
   
-  std::string full_path = std::string(MOUNT_POINT) + path;
+  std::string full_path = fatfs_path_(path);
   ESP_LOGD(TAG, "Scanning directory: %s", full_path.c_str());
-  
-  DIR *dir = opendir(full_path.c_str());
-  if (!dir) {
-    ESP_LOGE(TAG, "Failed to open directory: %s (errno: %d)", full_path.c_str(), errno);
+
+  FatfsDir dir{};
+  FRESULT result = f_opendir(&dir, full_path.c_str());
+  if (result != FR_OK) {
+    ESP_LOGE(TAG, "Failed to open directory: %s (fatfs err: %d)", full_path.c_str(), result);
     return;
   }
-  
-  struct dirent *entry;
+
+  FatfsFileInfo file_info{};
   int count = 0;
-  while ((entry = readdir(dir)) != nullptr) {
-    // Skip . and ..
-    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+  while (true) {
+    result = f_readdir(&dir, &file_info);
+    if (result != FR_OK || file_info.fname[0] == '\0')
+      break;
+    if (strcmp(file_info.fname, ".") == 0 || strcmp(file_info.fname, "..") == 0)
       continue;
     
     count++;
     std::string entry_path = path;
-    if (!entry_path.empty() && entry_path.back() != '/')
-      entry_path += "/";
-    entry_path += entry->d_name;
-    
-    struct stat st{};
-    std::string full_entry = std::string(MOUNT_POINT) + entry_path;
-    if (stat(full_entry.c_str(), &st) == 0) {
-      bool is_dir = S_ISDIR(st.st_mode);
-      out.push_back(FileInfo{entry_path, (size_t)st.st_size, is_dir});
-      ESP_LOGD(TAG, "  Found: %s (%s, %d bytes)", entry->d_name, is_dir ? "DIR" : "FILE", (int)st.st_size);
-      
-      if (is_dir && depth > 1) {
-        scan_dir_(entry_path, depth - 1, out);
-      }
+    if (!entry_path.empty() && entry_path.back() != kFatfsSeparator)
+      entry_path += kFatfsSeparator;
+    entry_path += file_info.fname;
+
+    bool is_dir = (file_info.fattrib & AM_DIR) != 0;
+    out.push_back(FileInfo{entry_path, static_cast<size_t>(file_info.fsize), is_dir});
+    ESP_LOGD(TAG, "  Found: %s (%s, %d bytes)", file_info.fname, is_dir ? "DIR" : "FILE",
+             static_cast<int>(file_info.fsize));
+
+    if (is_dir && depth > 1) {
+      scan_dir_(entry_path, depth - 1, out);
     }
   }
   ESP_LOGD(TAG, "Total entries found in %s: %d", path.c_str(), count);
-  closedir(dir);
+  f_closedir(&dir);
 }
 
 /* ---------- space ---------- */
