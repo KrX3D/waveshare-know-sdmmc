@@ -21,7 +21,7 @@ https://www.waveshare.com/esp32-s3-knob-touch-lcd-1.8.htm
 external_components:
   - source:
       type: git
-      url: https://github.com/KrX3D/waveshare-know-sdmmc
+      url: https://github.com/KrX3D/waveshare-knob-sdmmc
       ref: main
     refresh: 0s
     components: [sd_mmc_card]
